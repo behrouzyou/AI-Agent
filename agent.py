@@ -10,11 +10,59 @@ from tools import TOOLS
 client = OpenAI(base_url='https://api.gapgpt.app/v1', api_key=OPEN_API_KEY)
 
 AGENT_INSTRUCTIONS = """
-You are a company assistant.
-Always answer in Persian.
+You are a simple AI agent for a company.
+
+Your responsibilities:
+1. Answer the user in Persian.
+2. Use search_company_rules when company rules are relevant.
+3. Never invent company rules.
+4. If the user asks to send an email, use send_email.
+5. The application will ask the human for approval before email is actually sent.
+6. After every tool result, decide whether another tool is needed or whether the task is complete.
+7. If a tool fails, explain the problem or choose another reasonable path.
+8. Keep answers clear and concise.
+
+Important:
+- A tool is not automatically required for every request.
+- Company policy claims must be grounded in search_company_rules results.
+- We don't have any extra application like Slack or Calendar. just a rules file.
+"""
+PLANNER_INSTRUCTIONS = """
+Create a short high-level execution plan for an ai agent.
+
+Rules:
+- Write the plan in Persian.
+- Do not solve the task.
+- Do not reveal private chain-of-thought.
+- Only list observable actions the agent may perform.
+- Mention tool names when a tool will probably be needed.
+- Keep the plan between 1 and 5 numbered steps.
+- We don't have any extra application like Slack or Calendar. just a rules file.
 """
 
-import json
+def create_plan(user_input, memory):
+    planner_input = []
+    for message in memory[-MAX_MEMORY_SIZE:]:
+        planner_input.append(message)
+
+    planner_input.append({
+        "role": "user",
+        "content": user_input
+    })
+
+    response = client.chat.completions.create(
+            model=CHAT_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": PLANNER_INSTRUCTIONS
+                },
+                *planner_input
+            ]
+        )
+
+    plan = response.choices[0].message.content.strip()
+    return plan
 
 
 def run_agent(user_input, memory, rag_index):
@@ -22,10 +70,13 @@ def run_agent(user_input, memory, rag_index):
 
     state = {
         "goal": user_input,
+        "plan": create_plan(user_input, memory),
         "iteration": 0,
         "last_tool": None,
         "status": "running"
     }
+    print("\n===== Agent Plan =====\n")
+    print(state["plan"])
 
     # Load previous conversation history
     input_items = memory[-MAX_MEMORY_SIZE:].copy()
@@ -35,6 +86,17 @@ def run_agent(user_input, memory, rag_index):
         "role": "user",
         "content": user_input
     })
+
+    runtime_instructions = (
+            AGENT_INSTRUCTIONS
+            + "\n\n"
+            + "Current execution plan:\n"
+            + state["plan"]
+            + "\n\n"
+            + ("Follow this plan as a guide"
+               "If a tool result shows that a astep is unnessesary "
+               "or another action is required, adapt the execution")
+    )
 
     for iteration in range(1, MAX_ITERATION + 1):
         state["iteration"] = iteration
@@ -49,7 +111,7 @@ def run_agent(user_input, memory, rag_index):
             messages=[
                 {
                     "role": "system",
-                    "content": AGENT_INSTRUCTIONS
+                    "content": runtime_instructions
                 },
                 *input_items
             ],
