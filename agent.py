@@ -6,7 +6,7 @@ from openai.resources.responses import input_items
 from config import OPEN_API_KEY, CHAT_MODEL, MAX_ITERATION, MAX_MEMORY_SIZE
 from email_service import send_gmail
 from rag import  search_rules_in_rag
-from tools import TOOLS
+from tools import TOOLS, ask_email_apporval
 
 client = OpenAI(base_url='https://api.gapgpt.app/v1', api_key=OPEN_API_KEY)
 
@@ -159,9 +159,7 @@ def run_agent(user_input, memory, rag_index):
         # Execute requested tools
         for item in message.tool_calls:
             tool_name = item.function.name
-
             state["last_tool"] = tool_name
-
             print("Tool Call:", tool_name)
             tool_result_dump = ""
             if tool_name == "search_company_rules":
@@ -195,6 +193,12 @@ def run_agent(user_input, memory, rag_index):
                 to = arguments["to"]
                 subject = arguments["subject"]
                 content = arguments["body"]
+                approved=ask_email_apporval(to,subject,content)
+                if not approved:
+                    return json.dumps({
+                        "status": "canceled_by_human",
+                        "message": "The user did not approve sending the email."
+                    })
 
                 mail_results = send_gmail(to,subject,content)
                 tool_result_dump = json.dumps(mail_results,ensure_ascii=False)

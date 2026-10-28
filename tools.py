@@ -57,3 +57,16 @@ TOOLS = [
         }
     }
 ]
+
+def ask_email_apporval(to, subject, body):
+    print("Asking email apporval...")
+    print("To: ", to)
+    print("Subject: ", subject)
+    print("Body: ", body)
+    print("\n")
+    answer = input("آیا این ایمیل ارسال شود؟ (yes/no)")
+
+    answer = answer.lower().strip()
+    if answer == "yes":
+        return True
+    return False
