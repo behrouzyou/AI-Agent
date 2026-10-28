@@ -4,6 +4,7 @@ from openai import OpenAI
 from openai.resources.responses import input_items
 
 from config import OPEN_API_KEY, CHAT_MODEL, MAX_ITERATION, MAX_MEMORY_SIZE
+from email_service import send_gmail
 from rag import  search_rules_in_rag
 from tools import TOOLS
 
@@ -162,7 +163,7 @@ def run_agent(user_input, memory, rag_index):
             state["last_tool"] = tool_name
 
             print("Tool Call:", tool_name)
-
+            tool_result_dump = ""
             if tool_name == "search_company_rules":
                 arguments = json.loads(item.function.arguments)
                 user_query = arguments["query"]
@@ -177,10 +178,26 @@ def run_agent(user_input, memory, rag_index):
                         doc.model_dump()
                         for doc in tool_results
                     ],
-                    ensure_ascii=False,
-                    default=str
+                    ensure_ascii=False
+
                 )
 
+                print("Tool Result:", tool_result_dump)
+
+                # Return the tool result to the model
+                input_items.append({
+                    "role": "tool",
+                    "tool_call_id": item.id,
+                    "content": tool_result_dump
+                })
+            elif tool_name == "send_email":
+                arguments = json.loads(item.function.arguments)
+                to = arguments["to"]
+                subject = arguments["subject"]
+                content = arguments["body"]
+
+                mail_results = send_gmail(to,subject,content)
+                tool_result_dump = json.dumps(mail_results,ensure_ascii=False)
                 print("Tool Result:", tool_result_dump)
 
                 # Return the tool result to the model

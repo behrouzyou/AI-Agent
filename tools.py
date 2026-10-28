@@ -24,5 +24,36 @@ TOOLS = [
                 "additionalProperties": False
             }
         }
+    },
+{
+        "type": "function",
+        "function": {
+            "name": "send_email",
+            "description": (
+                "Sends an email through the configured Gmail account."
+                "This tool has an external side effect and must always "
+                "require human approval before the email is sent."
+            ),
+            "strict": True,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "to": {
+                        "type": "string",
+                        "description": "Recipient email address."
+                    },
+                    "subject": {
+                    "type": "string",
+                    "description": "Subject of the email."
+                },
+                     "body": {
+                    "type": "string",
+                    "description": "Body of the email."
+                }
+                },
+                "required":["to", "subject", "body"],
+                "additionalProperties": False
+            }
+        }
     }
 ]
