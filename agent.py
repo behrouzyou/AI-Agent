@@ -50,20 +50,21 @@ def create_plan(user_input, memory):
         "role": "user",
         "content": user_input
     })
-
-    response = client.chat.completions.create(
-            model=CHAT_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": PLANNER_INSTRUCTIONS
-                },
-                *planner_input
-            ]
-        )
-
-    plan = response.choices[0].message.content.strip()
-    return plan
+    try:
+        response = client.chat.completions.create(
+                model=CHAT_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": PLANNER_INSTRUCTIONS
+                    },
+                    *planner_input
+                ]
+            )
+        plan = response.choices[0].message.content.strip()
+        return plan
+    except Exception as e:
+        return "خطا در برنامه ریزی" + str(e)
 
 
 def run_agent(user_input, memory, rag_index):
@@ -106,19 +107,22 @@ def run_agent(user_input, memory, rag_index):
             "State:\n",
             json.dumps(state, ensure_ascii=False, indent=2)
         )
-
-        response = client.chat.completions.create(
-            model=CHAT_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": runtime_instructions
-                },
-                *input_items
-            ],
-            tools=TOOLS,
-            tool_choice="auto"
-        )
+        try:
+            response = client.chat.completions.create(
+                model=CHAT_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": runtime_instructions
+                    },
+                    *input_items
+                ],
+                tools=TOOLS,
+                tool_choice="auto"
+            )
+        except Exception as e:
+            state["status"] = "llm_error"
+            return "خطا در ارتباط با مدل " + str(e)
 
         message = response.choices[0].message
 
